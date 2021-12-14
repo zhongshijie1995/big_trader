@@ -2,6 +2,8 @@ import os
 import time
 import shutil
 
+from tqdm import tqdm
+
 import pandas as pd
 import efinance as ef
 
@@ -33,15 +35,14 @@ def get_today_min_cut_by_stock_list(today: str, stock_code_list: list[str]) -> p
     :return:
     """
     # 遍历所有股票代码用于获取分钟状况
-    a = None
-    for i, _a in enumerate(stock_code_list):
-        tmp = get_today_min_cut_by_stock_code(today, _a)
-        if a is None:
-            a = tmp
+    result = None
+    for stock_code in tqdm(stock_code_list):
+        tmp = get_today_min_cut_by_stock_code(today, stock_code)
+        if result is None:
+            result = tmp
         else:
-            a = a.append(tmp)
-        print(i, _a)
-    return a
+            result = result.append(tmp)
+    return result
 
 
 def get_real_time_summary() -> pd.DataFrame:
