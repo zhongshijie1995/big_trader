@@ -1,6 +1,7 @@
 import os
 import time
 import shutil
+import typing
 
 from tqdm import tqdm
 
@@ -26,7 +27,7 @@ def get_today_min_cut_by_stock_code(today: str, stock_code: str) -> pd.DataFrame
     return c
 
 
-def get_today_min_cut_by_stock_list(today: str, stock_code_list: list[str]) -> pd.DataFrame:
+def get_today_min_cut_by_stock_list(today: str, stock_code_list: typing.List[str]) -> pd.DataFrame:
     """
     获取多支股票当天的分钟状况
 
