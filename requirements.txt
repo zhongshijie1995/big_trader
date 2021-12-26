@@ -1,3 +1,4 @@
 efinance==0.4.0
 pandas==1.3.5
 tqdm==4.62.3
+sqlalchemy~=1.4.27
