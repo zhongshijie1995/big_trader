@@ -86,7 +86,7 @@ class Collector(object):
         result = self.convert_type(result)
         return result
 
-    def get_today_min_cut_by_stock_list(self, today: str, stock_code_list: typing.List[str]) -> pd.DataFrame:
+    def get_today_min_cut_by_stock_list(self) -> pd.DataFrame:
         """
         获取多支股票当天的分钟状况
 
@@ -94,6 +94,8 @@ class Collector(object):
         :param stock_code_list:
         :return:
         """
+        today = time.strftime('%Y%m%d', time.localtime())
+        stock_code_list = self.get_real_time_summary()['股票代码']
         # 遍历所有股票代码用于获取分钟状况
         result = None
         for stock_code in tqdm(stock_code_list):
@@ -120,19 +122,15 @@ class Collector(object):
 
         :return:
         """
-        today = time.strftime('%Y%m%d', time.localtime())
-        # 获取市场概况
-        loguru.logger.info('获取市场概况')
-        a = self.get_real_time_summary()
-        a.to_sql('市场概况', self.engine, index=False, if_exists='append')
-        # 获取股票详情
-        loguru.logger.info('获取股票详情')
-        b = self.get_today_min_cut_by_stock_list(today, a['股票代码'])
-        b.to_sql('股票详情', self.engine, index=False, if_exists='append')
-        # 获取股票龙虎榜
-        loguru.logger.info('获取股票龙虎榜')
-        c = self.get_daily_billboard()
-        c.to_sql('股票龙虎榜', self.engine, index=False, if_exists='append')
+        tab_func_dict = {
+            '市场概况': self.get_real_time_summary,
+            '股票详情': self.get_today_min_cut_by_stock_list,
+            '股票龙虎榜': self.get_daily_billboard,
+        }
+        for k, v in tab_func_dict.items():
+            loguru.logger.info(k)
+            df = v()
+            df.to_sql(k, self.engine, index=False, if_exists='append')
         return None
 
     def select(self, sql: str) -> pd.DataFrame:
