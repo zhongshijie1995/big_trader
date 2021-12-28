@@ -1,6 +1,7 @@
 import time
 import typing
 
+import numpy as np
 from sqlalchemy import create_engine
 from tqdm import tqdm
 
@@ -10,10 +11,45 @@ import efinance as ef
 
 class Collector(object):
     def __init__(self, engine_str: str = 'sqlite+pysqlite:///db.sqlite'):
-        self.engine = create_engine(engine_str)
+        """
+        数据采集器
 
-    @staticmethod
-    def get_today_min_cut_by_stock_code(the_day: str, stock_code: str) -> pd.DataFrame:
+        :param engine_str:
+        """
+        self.engine = create_engine(engine_str)
+        self.numeric_col_list = [
+            # 市场概况
+            '涨跌幅', '最新价', '最高', '最低', '今开', '涨跌额', '换手率', '量比', '动态市盈率', '成交量', '成交额', '昨日收盘',
+            '总市值', '流通市值', '行情ID',
+            # 股票详情
+            '开盘', '收盘', '振幅', '主力净流入', '小单净流入', '中单净流入', '大单净流入', '超大单净流入',
+        ]
+        self.datetime_col_list = [
+            '时间',
+        ]
+
+    def convert_type(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        获取转换数据类型后的数据框
+
+        :param df:
+        :return:
+        """
+        # 待转换列表
+        tmp_num_col_list = []
+        tmp_dt_col_list = []
+        # 若存在与需转换列表中，则假如待转换列表
+        for i in df.columns:
+            if i in self.numeric_col_list:
+                tmp_num_col_list.append(i)
+            if i in self.datetime_col_list:
+                tmp_dt_col_list.append(i)
+        # 进行类型转换
+        df[tmp_num_col_list] = df[tmp_num_col_list].apply(pd.to_numeric, errors='coerce')
+        df[tmp_dt_col_list] = df[tmp_dt_col_list].apply(pd.to_datetime, errors='coerce')
+        return df
+
+    def get_today_min_cut_by_stock_code(self, the_day: str, stock_code: str) -> pd.DataFrame:
         """
         获取一支股票当天的分钟状况
 
@@ -28,16 +64,23 @@ class Collector(object):
         b = ef.stock.get_today_bill(stock_code)
         # 合并分钟状况
         c = pd.merge(a, b, on=['股票名称', '股票代码', '时间'])
-        return c
+        # 类型转换
+        result = self.convert_type(c)
+        return result
 
-    @staticmethod
-    def get_real_time_summary() -> pd.DataFrame:
+    def get_real_time_summary(self) -> pd.DataFrame:
         """
         获取全市场实时概况
 
         :return:
         """
-        return ef.stock.get_realtime_quotes()
+        # 获取实时市场概况
+        result = ef.stock.get_realtime_quotes()
+        # 增加当前时间列
+        result['时间'] = np.datetime64(time.strftime('%Y-%m-%d %H:%M'))
+        # 类型转换
+        result = self.convert_type(result)
+        return result
 
     def get_today_min_cut_by_stock_list(self, today: str, stock_code_list: typing.List[str]) -> pd.DataFrame:
         """
@@ -64,9 +107,26 @@ class Collector(object):
         :return:
         """
         today = time.strftime('%Y%m%d', time.localtime())
-
+        # 获取市场概况
         a = self.get_real_time_summary()
-        a.to_sql('stock_summary', self.engine, index=False, if_exists='append')
-
+        a.to_sql('市场概况', self.engine, index=False, if_exists='append')
+        # 获取股票详情
         b = self.get_today_min_cut_by_stock_list(today, a['股票代码'])
-        b.to_sql('stock_detail', self.engine, index=False, if_exists='append')
+        b.to_sql('股票详情', self.engine, index=False, if_exists='append')
+        return None
+
+    def select(self, sql: str) -> pd.DataFrame:
+        """
+        通过SQL进行数据库数据的获取
+
+        :param sql:
+        :return:
+        """
+        return pd.read_sql(sql, self.engine)
+
+
+if __name__ == '__main__':
+    collector = Collector()
+    collector.save_today_at_night()
+    print(collector.select('select count(*) from 市场概况'))
+    print(collector.select('select count(*) from 股票详情'))
