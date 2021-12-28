@@ -1,5 +1,6 @@
 import time
 import typing
+import loguru
 
 import numpy as np
 from sqlalchemy import create_engine
@@ -25,7 +26,10 @@ class Collector(object):
             '开盘', '收盘', '振幅', '主力净流入', '小单净流入', '中单净流入', '大单净流入', '超大单净流入',
         ]
         self.datetime_col_list = [
+            # 股票详情
             '时间',
+            # 股票龙虎榜
+            '上榜日期',
         ]
 
     def convert_type(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -100,6 +104,16 @@ class Collector(object):
                 result = result.append(tmp)
         return result
 
+    def get_daily_billboard(self) -> pd.DataFrame:
+        """
+        获得当日股票龙虎榜
+
+        :return:
+        """
+        result = ef.stock.get_daily_billboard()
+        result = self.convert_type(result)
+        return result
+
     def save_today_at_night(self) -> None:
         """
         夜间保存当日发生数据
@@ -108,11 +122,17 @@ class Collector(object):
         """
         today = time.strftime('%Y%m%d', time.localtime())
         # 获取市场概况
+        loguru.logger.info('获取市场概况')
         a = self.get_real_time_summary()
         a.to_sql('市场概况', self.engine, index=False, if_exists='append')
         # 获取股票详情
+        loguru.logger.info('获取股票详情')
         b = self.get_today_min_cut_by_stock_list(today, a['股票代码'])
         b.to_sql('股票详情', self.engine, index=False, if_exists='append')
+        # 获取股票龙虎榜
+        loguru.logger.info('获取股票龙虎榜')
+        c = self.get_daily_billboard()
+        c.to_sql('股票龙虎榜', self.engine, index=False, if_exists='append')
         return None
 
     def select(self, sql: str) -> pd.DataFrame:
@@ -130,3 +150,4 @@ if __name__ == '__main__':
     collector.save_today_at_night()
     print(collector.select('select count(*) from 市场概况'))
     print(collector.select('select count(*) from 股票详情'))
+    print(collector.select('select count(*) from 股票龙虎榜'))
