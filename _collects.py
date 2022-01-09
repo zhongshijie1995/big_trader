@@ -1,5 +1,4 @@
 import time
-import typing
 import loguru
 
 import numpy as np
@@ -144,8 +143,9 @@ class Collector(object):
 
 
 if __name__ == '__main__':
-    collector = Collector()
-    collector.save_today_at_night()
-    print(collector.select('select count(*) from 市场概况'))
-    print(collector.select('select count(*) from 股票详情'))
-    print(collector.select('select count(*) from 股票龙虎榜'))
+    # collector = Collector()
+    # collector.save_today_at_night()
+    # print(collector.select('select count(*) from 市场概况'))
+    # print(collector.select('select count(*) from 股票详情'))
+    # print(collector.select('select count(*) from 股票龙虎榜'))
+    print(ef.stock.get_quote_history('002233', klt=5).dtypes)
